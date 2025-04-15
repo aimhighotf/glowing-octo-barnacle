@@ -1,0 +1,55 @@
+name: Build and Release APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq \
+            git zip unzip python3-pip \
+            zlib1g-dev libncurses5-dev \
+            libssl-dev libffi-dev \
+            liblzma-dev lzma ant
+
+    - name: Run build script
+      run: |
+        chmod +x scripts/build_apk.sh
+        ./scripts/build_apk.sh
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: aimhigh-apk
+        path: $HOME/aimhigh_build/artifacts/*.apk
+        retention-days: 7
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: $HOME/aimhigh_build/artifacts/*.apk
+        tag_name: v$(date +'%Y.%m.%d')
+        name: "AimHigh v$(date +'%Y.%m.%d')"
+        body: |
+          ### New Release
+          - Built on $(date)
+          - Includes ChatGPT-4 integration
+          - Robot welcome screen
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
